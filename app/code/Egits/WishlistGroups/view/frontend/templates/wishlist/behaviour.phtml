@@ -1,0 +1,310 @@
+<?php
+/**
+ * Copyright © Magento, Inc. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+?>
+<?php
+/* @var $block \Magento\MultipleWishlist\Block\Behaviour */
+?>
+
+<!-- Wishlist Hidden Form Template -->
+<script id="form-tmpl-multiple" type="text/x-magento-template">
+    <form id="wishlist-hidden-form" method="post" action="<%- data.url %>" class="no-display">
+        <% if (data.itemId) { %>
+        <input name="item_id" value="<%- data.itemId %>">
+        <% } %>
+        <% if (data.wishlistId) { %>
+        <input name="wishlist_id" value="<%- data.wishlistId %>">
+        <% } %>
+        <% if (data.qty) { %>
+        <input name="qty" value="<%- data.qty %>">
+        <% } %>
+        <% if (data.item) { %>
+        <input name="item" value="<%- data.item %>">
+        <% } %>
+        <% if (data.entity) { %>
+        <input name="entity" value="<%- data.entity %>">
+        <% } %>
+        <% if (data.form_key) { %>
+        <input name="form_key" value="<%- data.form_key %>">
+        <% } %>
+    </form>
+</script>
+
+<!-- Wishlist Popup Template -->
+<div id="wishlist-popup" class="wishlist-popup" style="display: none;">
+    <div class="popup-content">
+        <button id="create-new-wishlist-btn" class="action primary">
+            <span><?= __('Create New') ?></span>
+        </button>
+        <button id="add-existing-wishlist-btn" class="action secondary">
+            <span><?= __('Add to Existing') ?></span>
+        </button>
+        <div style="margin-bottom: 30px;"></div>
+
+        <!-- Create New Wishlist Form -->
+        <form id="new-wishlist-form" method="post" style="display: none;">
+            <fieldset class="fieldset">
+                <div class="field name">
+                    <label for="wishlist-name" class="label">
+                        <span><?= __('Wishlist Name') ?></span>
+                    </label>
+                    <div class="control">
+                        <input id="wishlist-name"
+                               class="input-text"
+                               type="text"
+                               name="wishlist_name"
+                               required>
+                    </div>
+                </div>
+                <div class="actions-toolbar">
+                    <div class="primary">
+                        <button class="action save primary" type="submit">
+                            <span><?= __('Save') ?></span>
+                        </button>
+                    </div>
+                </div>
+            </fieldset>
+        </form>
+
+        <!-- Existing Wishlist List -->
+        <div id="existing-wishlist-section" style="display: none;">
+            <label for="wishlist-select"><?= __('Select Wishlist') ?></label>
+            <select id="wishlist-select" class="input-select" style="margin-top: 10px;">
+                <!-- Wishlist options will be loaded dynamically -->
+            </select>
+
+            <button id="add-to-selected-wishlist" class="action primary" style="margin-top: 20px;">
+                <span><?= __('Add to Wishlist') ?></span>
+            </button>
+        </div>
+
+        <!-- <button class="action cancel" type="button">
+            <span><?= __('Cancel') ?></span>
+        </button> -->
+    </div>
+</div>
+
+<!-- Split Button Template -->
+<script id="split-btn-tmpl" type="text/x-magento-template">
+    <div class="split button wishlist">
+        <button type="button"
+                data-post='<%- JSON.stringify(data.generalParams) %>'
+                data-action="add-to-wishlist"
+                class="label action split">
+            <span><%- data.buttonName %></span>
+        </button>
+        <button class="action toggle change"
+                title="<%- window.jQuery.mage.__('Add to:') %>"
+                type="button"
+                data-mage-init='{"dropdown":{}}'
+                data-toggle="dropdown"
+                data-trigger-keypress-button="true">
+            <span><%- window.jQuery.mage.__('Add to:') %></span>
+        </button>
+        <ul class="items" data-target="dropdown">
+            <% _.each(data.wishlists, function(item) { %>
+            <li class="item">
+                    <span role="button"
+                          tabindex="0"
+                          data-action-keypress="true"
+                          data-post='<%- JSON.stringify(item.params) %>'
+                          data-action="add-to-wishlist"
+                          title="<%- item.name %>">
+                        <%- item.name %>
+                    </span>
+            </li>
+            <% }); %>
+        </ul>
+    </div>
+</script>
+
+<!-- JavaScript to Handle Popup Logic -->
+<script type="text/javascript">
+    require([
+        'jquery',
+        'Magento_Ui/js/modal/modal',
+        'mage/url'
+    ], function ($, modal, urlBuilder) {
+
+        var popupElement = $('#wishlist-popup');
+        var clickedButton = null;
+        var productData = null;
+
+        if (popupElement.length) {
+            var popup = popupElement.modal({
+                type: 'popup',
+                title: 'Wishlist Options',
+                modalClass: 'wishlist-popup-modal',
+                responsive: true,
+                innerScroll: true,
+                buttons: []
+            });
+
+            // Open Popup
+            $('body').on('click', '.action.split', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                // Reset popup content to its initial state
+                $('#new-wishlist-form').hide();
+                $('#existing-wishlist-section').hide();
+                $('#create-new-wishlist-btn').show();
+                $('#add-existing-wishlist-btn').show();
+
+                clickedButton = $(this);
+                productData = JSON.parse(clickedButton.attr('data-post') || '{}');
+                popupElement.modal('openModal');
+            });
+
+            // Create New Wishlist and Add Product
+            $('body').on('submit', '#new-wishlist-form', function (event) {
+                event.preventDefault();
+                var wishlistName = $('#wishlist-name').val().trim();
+
+                if (!wishlistName) {
+                    alert('Please enter a wishlist name.');
+                    return;
+                }
+
+                var productId = productData?.data?.product;
+                if (!productId) {
+                    alert('Product data is missing.');
+                    return;
+                }
+
+                var requestData = {
+                    name: wishlistName,
+                    product: productId
+                };
+
+                $.ajax({
+                    url: urlBuilder.build('wishlistgroups/index/add'),
+                    type: 'POST',
+                    dataType: 'json',
+                    data: requestData,
+                    showLoader: true,
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Wishlist Created & Product Added Successfully');
+                            popupElement.modal('closeModal');
+                        } else {
+                            alert(response.message || 'Error occurred while adding to wishlist.');
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error("AJAX Error:", xhr.responseText);
+                        alert('Failed to process the request.');
+                    }
+                });
+            });
+
+            $('#add-existing-wishlist-btn').on('click', function () {
+                $('#existing-wishlist-section').show();
+                $('#new-wishlist-form').hide();
+
+                $.ajax({
+                    url: urlBuilder.build('wishlistgroups/index/listwishlist'),
+                    type: 'GET',
+                    dataType: 'json',
+                    showLoader: true,
+                    success: function (response) {
+                        var select = $('#wishlist-select');
+                        select.empty();
+
+                        if (response.success && response.wishlists.length > 0) {
+                            $.each(response.wishlists, function (index, wishlist) {
+                                select.append('<option value="' + wishlist.id + '">' + wishlist.name + '</option>');
+                            });
+                        } else {
+                            select.append('<option value="">' + 'No Wishlists Available' + '</option>');
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error("Error fetching wishlists:", xhr.responseText);
+                        alert('Failed to load wishlists. Please try again.');
+                    }
+                });
+            });
+
+            $('#add-to-selected-wishlist').on('click', function () {
+                var wishlistId = $('#wishlist-select').val();
+
+                if (!wishlistId) {
+                    alert('Please select a wishlist.');
+                    return;
+                }
+
+                if (productData) {
+                    var productId = productData?.data?.product;
+
+                    if (!productId) {
+                        alert('Product data is missing.');
+                        return;
+                    }
+
+                    var requestData = {
+                        wishlist_id: wishlistId,
+                        product_id: productId
+                    };
+
+                    $.ajax({
+                        url: urlBuilder.build('wishlistgroups/index/existing'),
+                        type: 'POST',
+                        dataType: 'json',
+                        data: requestData,
+                        showLoader: true,
+                        success: function (response) {
+                            if (response.success) {
+                                alert('Product added to wishlist');
+                                popupElement.modal('closeModal');
+                            } else {
+                                alert(response.message || 'Error adding product.');
+                            }
+                        },
+                        error: function (xhr) {
+                            console.error("Error:", xhr.responseText);
+                            alert('Failed to add product to wishlist.');
+                        }
+                    });
+                }
+            });
+
+            $('#create-new-wishlist-btn').on('click', function () {
+                $('#new-wishlist-form').show();
+                $('#existing-wishlist-section').hide();
+            });
+
+            $('body').on('click', '.wishlist-popup .cancel', function () {
+                popupElement.modal('closeModal');
+            });
+        } else {
+            console.error("Wishlist popup element not found");
+        }
+    });
+
+</script>
+
+<!-- Magento JS Component Initialization -->
+<script type="text/x-magento-init">
+    {
+        "*": {
+            "Magento_Ui/js/core/app": {
+                "components": {
+                    "multipleWishlist": {
+                        "component": "Magento_MultipleWishlist/js/view/multiple-wishlist",
+                        "config": {
+                            "multipleWishlistOptions": {
+                                "createUrl": "<?= $block->escapeUrl($block->getCreateUrl()) ?>",
+                                "wishlistLink": ".action.towishlist"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+</script>

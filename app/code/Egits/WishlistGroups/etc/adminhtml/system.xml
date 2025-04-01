@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="egits" translate="label" sortOrder="10">
+            <label>EGITS</label>
+        </tab>
+        <section id="wishlist_groups" translate="label" sortOrder="130" showInDefault="1" showInWebsite="1"
+                 showInStore="1">
+            <class>separator-top</class>
+            <label>Wishlist Groups</label>
+            <tab>egits</tab>
+            <resource>Egits_WishlistGroups::config_wishlistgroups</resource>
+            <group id="wishlist" translate="label" type="text" sortOrder="10" showInDefault="1"
+                   showInWebsite="1" showInStore="1">
+                <label>Enter the Wishlist Limit</label>
+                <field id="wishlist_count" translate="label" type="text" sortOrder="20" showInDefault="1"
+                       showInWebsite="1"
+                       showInStore="1" canRestore="1">
+                    <validate>validate-number</validate>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
