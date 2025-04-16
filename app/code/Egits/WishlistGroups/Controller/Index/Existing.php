@@ -14,6 +14,7 @@ use Magento\Catalog\Model\ProductRepository;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\App\RequestInterface;
 use Psr\Log\LoggerInterface;
+use Magento\Framework\Message\ManagerInterface;
 
 /**
  * Class Existing
@@ -49,6 +50,10 @@ class Existing implements ActionInterface
      * @var ResourWishlistFactory
      */
     protected $resourceFactory;
+    /**
+     * @var ManagerInterface
+     */
+    protected $messageManager;
 
     public function __construct(
         JsonFactory $jsonFactory,
@@ -57,7 +62,8 @@ class Existing implements ActionInterface
         ProductRepository $productRepository,
         RequestInterface $request,
         LoggerInterface $logger,
-        ResourWishlistFactory $resourceFactory
+        ResourWishlistFactory $resourceFactory,
+        ManagerInterface $messageManager
     )
     {
         $this->jsonFactory = $jsonFactory;
@@ -67,6 +73,7 @@ class Existing implements ActionInterface
         $this->request = $request;
         $this->logger = $logger;
         $this->resourceFactory = $resourceFactory;
+        $this->messageManager = $messageManager;
 
     }
 
@@ -116,12 +123,13 @@ class Existing implements ActionInterface
             // Add product to the specific wishlist
             $wishlist->addNewItem($product);
             $this->resourceFactory->create()->save($wishlist);
-
+            $this->messageManager->addSuccessMessage("Product added to the selected wishlist successfully.");
             return $result->setData([
                 'success' => true,
                 'message' => __('Product added to the selected wishlist successfully.')
             ]);
         } catch (\Exception $e) {
+            $this->messageManager->addErrorMessage("Unable to add the product to wishlist right now. Please try again");
             $this->logger->error("Wishlist Error: " . $e->getMessage());
             return $result->setData([
                 'success' => false,

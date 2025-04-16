@@ -16,6 +16,7 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Wishlist\Model\ResourceModel\Wishlist\CollectionFactory;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Psr\Log\LoggerInterface;
+use Magento\Framework\Message\ManagerInterface;
 
 /**
  * Class Add
@@ -59,6 +60,10 @@ class Add implements ActionInterface
      * @var ScopeConfigInterface
      */
     protected $scopeConfig;
+    /**
+     * @var ManagerInterface
+     */
+    protected $messageManager;
 
     public function __construct(
         JsonFactory $jsonFactory,
@@ -69,7 +74,8 @@ class Add implements ActionInterface
         LoggerInterface $logger,
         ResourceFactory $resourceFactory,
         CollectionFactory $collectionFactory,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        ManagerInterface $messageManager
 
     )
     {
@@ -82,6 +88,7 @@ class Add implements ActionInterface
         $this->resourceFactory = $resourceFactory;
         $this->collectionFactory = $collectionFactory;
         $this->scopeConfig = $scopeConfig;
+        $this->messageManager = $messageManager;
     }
 
     /**
@@ -144,21 +151,21 @@ class Add implements ActionInterface
                 // Add product to wishlist
                 $wishlist->addNewItem($product);
                 $this->resourceFactory->create()->save($wishlist);
-
+                $this->messageManager->addSuccessMessage("Wishlist Created & Product Added Successfully.");
                 return $result->setData([
                     'success' => true,
                     'message' => __('Wishlist Created & Product Added Successfully.')
                 ]);
             } else {
+                $this->messageManager->addErrorMessage("You already created " . $wishlistCount . " wishlists. If you want to create a new one, please delete an existing one and try again.");
                 return $result->setData([
                     'success' => false,
                     'message' => __("You already created " . $wishlistCount . " wishlists. If you want to create a new one, please delete an existing one and try again.")
                 ]);
 
             }
-            $this->messageManager->addSuccessMessage("The Product (" . $productName . ") added to Quote");
-
         } catch (\Exception $e) {
+            $this->messageManager->addErrorMessage("Unable to add the product to wishlist right now. Please try again");
             $this->logger->error("Wishlist Error: " . $e->getMessage());
             return $result->setData([
                 'success' => false,
